@@ -15,11 +15,18 @@
     "base62": "^2.0.2",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "express-session": "^1.18.1",
     "helmet": "^8.0.0",
+    "ioredis": "^5.4.2",
     "joi": "^17.13.3",
     "mongoose": "^8.9.2",
     "mongoose-sequence": "^6.0.1",
     "nanoid": "^5.0.9",
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.9",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "redis": "^4.7.0",
+    "ua-parser-js": "^2.0.0"
   }
 }
