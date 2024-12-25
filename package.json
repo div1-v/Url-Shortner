@@ -1,0 +1,25 @@
+{
+  "name": "url_shortner",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "base58": "^2.0.1",
+    "base62": "^2.0.2",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "joi": "^17.13.3",
+    "mongoose": "^8.9.2",
+    "mongoose-sequence": "^6.0.1",
+    "nanoid": "^5.0.9",
+    "nodemon": "^3.1.9"
+  }
+}
