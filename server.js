@@ -4,9 +4,15 @@ const bodyParser = require("body-parser");
 const helmet = require('helmet');
 const connectDB = require('./src/config/database');
 const urlShortnerRoutes = require('./src/routes/urls');
+const authRoutes = require('./src/routes/auth');
 const {rateLimit} = require('express-rate-limit')
+const setupSwagger = require('./src/swagger/swagger');
+
+require('./src/config/passport'); 
 
 const app = express();
+
+setupSwagger(app)
 
 const limiter = rateLimit({
 	windowMs: 15 * 60 * 1000, // 15 minutes
@@ -28,6 +34,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api", urlShortnerRoutes);
+app.use('/api/auth', authRoutes);
 
 process.on('uncaughtException', (error) => {
     console.log(`[uncaughtException] [Error]=> ${error}`);

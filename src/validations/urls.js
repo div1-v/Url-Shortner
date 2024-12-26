@@ -31,3 +31,12 @@ exports.shortenUrlAliasValidation = joi.object({
             'string.base': '"customAlias" should be a type of \'string\''
         }),
 });
+
+exports.shortenUrlTopicValidation = joi.object({
+
+    topic: joi.string()
+        .optional()
+        .messages({
+            'string.base': '"customAlias" should be a type of \'string\''
+        }),
+});
