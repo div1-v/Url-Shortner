@@ -1,7 +1,5 @@
 const express = require("express");
 const passport = require("passport");
-const jwt = require("jsonwebtoken");
-//const User = require("../models/User"); // Your User model
 const router = express.Router();
 
 const registerUser = async (req, res) => {

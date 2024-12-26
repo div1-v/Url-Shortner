@@ -40,25 +40,30 @@ exports.getUrlAliasAnalytics = async (alias) => {
           as: "analyticsData",
         },
       },
+
+      {
+        $addFields: {
+          totalClicks: { $size: { $ifNull: ["$analyticsData", []] } }, // Project only the analyticsData field
+        },
+      },
       {
         $unwind: {
           path: "$analyticsData",
-          preserveNullAndEmptyArrays: true, // In case there is no analytics data
+          preserveNullAndEmptyArrays: true,
         },
       },
-      // Step 4: Group and calculate totalClicks and uniqueClicks
       {
         $group: {
-          _id: "$alias", // Group by alias (URL)
-          totalClicks: { $sum: 1 }, // Count all clicks
-          uniqueClicks: {
-            $addToSet: "$analyticsData.ipAddress", // Collect unique IPs to calculate unique clicks
+          _id: "$alias",
+          totalClicks: { $first: "$totalClicks" },
+          uniqueUsers: {
+            $addToSet: "$analyticsData.ipAddress",
           },
           osType: {
-            $push: "$analyticsData.osType", // Collect all OS types for further analysis
+            $push: "$analyticsData.osType",
           },
           deviceType: {
-            $push: "$analyticsData.deviceType", // Collect all device types for further analysis
+            $push: "$analyticsData.deviceType",
           },
           clicksByDate: {
             $push: {
@@ -72,12 +77,11 @@ exports.getUrlAliasAnalytics = async (alias) => {
           },
         },
       },
-      // Step 5: Project final result to calculate unique clicks from distinct IPs
       {
         $project: {
           _id: 0,
           totalClicks: 1,
-          uniqueClicks: { $size: { $setUnion: ["$uniqueClicks", []] } }, // Get unique IPs
+          uniqueUsers: { $size: { $setUnion: ["$uniqueUsers", []] } }, // Get unique IPs
           clicksByDate: {
             $map: {
               input: { $setUnion: ["$clicksByDate", []] }, // Get unique dates
@@ -138,6 +142,15 @@ exports.getUrlAliasAnalytics = async (alias) => {
       },
     ]);
 
+    if (!result[0]) {
+      return {
+        totalClicks: 0,
+        uniqueClicks: 0,
+        clicksByDate: [],
+        osType: [],
+        deviceType: [],
+      };
+    }
     return result[0];
   } catch (error) {
     console.log(error);
@@ -148,39 +161,24 @@ exports.getOverallAnalytics = async () => {
   try {
     const result = await Analytics.aggregate([
       {
-        $lookup: {
-          from: "analytics",
-          localField: "_id",
-          foreignField: "urlId",
-          as: "analyticsData",
-        },
-      },
-      {
-        $unwind: {
-          path: "$analyticsData",
-          preserveNullAndEmptyArrays: true, // In case there is no analytics data
-        },
-      },
-      // Step 4: Group and calculate totalClicks and uniqueClicks
-      {
         $group: {
           _id: "$alias", // Group by alias (URL)
           totalClicks: { $sum: 1 }, // Count all clicks
-          uniqueClicks: {
-            $addToSet: "$analyticsData.ipAddress", // Collect unique IPs to calculate unique clicks
+          uniqueUsers: {
+            $addToSet: "$ipAddress", // Collect unique IPs to calculate unique clicks
           },
           osType: {
-            $push: "$analyticsData.osType", // Collect all OS types for further analysis
+            $push: "$osType", // Collect all OS types for further analysis
           },
           deviceType: {
-            $push: "$analyticsData.deviceType", // Collect all device types for further analysis
+            $push: "$deviceType", // Collect all device types for further analysis
           },
           clicksByDate: {
             $push: {
               date: {
                 $dateToString: {
                   format: "%Y-%m-%d",
-                  date: "$analyticsData.createdAt",
+                  date: "$createdAt",
                 },
               },
             },
@@ -192,7 +190,7 @@ exports.getOverallAnalytics = async () => {
         $project: {
           _id: 0,
           totalClicks: 1,
-          uniqueClicks: { $size: { $setUnion: ["$uniqueClicks", []] } }, // Get unique IPs
+          uniqueUsers: { $size: { $setUnion: ["$uniqueUsers", []] } }, // Get unique IPs
           clicksByDate: {
             $map: {
               input: { $setUnion: ["$clicksByDate", []] }, // Get unique dates
@@ -253,122 +251,116 @@ exports.getOverallAnalytics = async () => {
       },
     ]);
 
+    const totalUrls = await Url.countDocuments();
+    result[0].totalUrls = totalUrls;
     return result[0];
   } catch (error) {
     console.log(error);
   }
 };
 
-exports.getTopicAnalytics = async () => {
-  try {
-    const result = await Url.aggregate([
-      // Step 1: Lookup Analytics collection to join analytics data
-      {
-        $lookup: {
-          from: "analytics",
-          localField: "_id",
-          foreignField: "urlId",
-          as: "analyticsData",
+exports.getTopicAnalytics = async (topic) => {
+    try {
+      const result = await Analytics.aggregate([
+        {
+          $match: topic, // Match the specified topic
         },
-      },
-      // Step 2: Unwind the analyticsData array (if there’s more than one entry per URL)
-      {
-        $unwind: {
-          path: "$analyticsData",
-          preserveNullAndEmptyArrays: true, // In case there is no analytics data
+        {
+          $lookup: {
+            from: "analytics", // Join with the analytics collection
+            localField: "_id", // Match by URL ID
+            foreignField: "urlId", // Match by URL ID in the analytics collection
+            as: "analyticsData", // Store matched analytics records in 'analyticsData'
+          },
         },
-      },
-      // Step 3: Group and calculate totalClicks, uniqueClicks, and other data
-      {
-        $group: {
-          _id: "$alias", // Group by alias (URL)
-          totalUrls: { $sum: 1 }, // Count of total URLs created
-          totalClicks: { $sum: 1 }, // Count all clicks
-          uniqueClicks: {
-            $addToSet: "$analyticsData.ipAddress", // Collect unique IPs to calculate unique clicks
+        {
+          $addFields: {
+            totalClicks: { $size: { $ifNull: ["$analyticsData", []] } }, // Calculate total clicks per URL
           },
-          osType: {
-            $push: "$analyticsData.osType", // Collect all OS types for further analysis
+        },
+        {
+          $unwind: {
+            path: "$analyticsData", // Flatten the analyticsData array
+            preserveNullAndEmptyArrays: true, // If no analytics data, keep the URL document
           },
-          deviceType: {
-            $push: "$analyticsData.deviceType", // Collect all device types for further analysis
-          },
-          clicksByDate: {
-            $push: {
-              date: {
-                $dateToString: {
-                  format: "%Y-%m-%d", // Format date as yyyy-mm-dd
-                  date: "$analyticsData.createdAt",
-                },
-              },
-              clickCount: 1, // Increment click count by 1 for each record
+        },
+        {
+          $group: {
+            _id: "$alias", // Group by alias (URL)
+            totalClicks: { $first: "$totalClicks" }, // Keep the first totalClicks (total clicks for URL)
+            uniqueClicks: {
+              $addToSet: "$analyticsData.ipAddress", // Collect unique IPs to calculate unique clicks
             },
-          },
-        },
-      },
-      // Step 4: Project final result with unique clicks, clicks by date, osType, deviceType
-      {
-        $project: {
-          _id: 0,
-          alias: 1,
-          totalUrls: 1,
-          totalClicks: 1,
-          uniqueClicks: { $size: { $setUnion: ["$uniqueClicks", []] } }, // Get unique IPs
-          clicksByDate: {
-            $map: {
-              input: "$clicksByDate",
-              as: "dateClick",
-              in: {
-                date: "$$dateClick.date",
-                clickCount: {
-                  $sum: "$$dateClick.clickCount", // Sum the click counts per date
-                },
-              },
-            },
-          },
-          osType: {
-            $map: {
-              input: { $setUnion: ["$osType", []] }, // Get unique OS types
-              as: "os",
-              in: {
-                osName: "$$os",
-                uniqueClicks: {
-                  $size: {
-                    $filter: {
-                      input: "$osType",
-                      as: "osType",
-                      cond: { $eq: ["$$osType", "$$os"] },
-                    },
+            clicksByDate: {
+              $push: {
+                date: {
+                  $dateToString: {
+                    format: "%Y-%m-%d", // Format date as yyyy-mm-dd
+                    date: "$analyticsData.createdAt", // Use createdAt as the date for clicks
                   },
                 },
-                uniqueUsers: 1, // You can calculate unique users per OS if needed
+                clickCount: 1, // Each entry represents a click
               },
             },
-          },
-          deviceType: {
-            $map: {
-              input: { $setUnion: ["$deviceType", []] }, // Get unique device types
-              as: "device",
-              in: {
-                deviceName: "$$device",
-                uniqueClicks: {
-                  $size: {
-                    $filter: {
-                      input: "$deviceType",
-                      as: "deviceType",
-                      cond: { $eq: ["$$deviceType", "$$device"] },
-                    },
-                  },
-                },
-                uniqueUsers: 1, // You can calculate unique users per device if needed
-              },
+            shortUrls: { 
+              $push: { shortUrl: "$alias", totalClicks: "$totalClicks" } // Collect URLs and their total clicks
             },
           },
         },
-      },
-    ]);
-    return result;
-  } catch (error) {
-    console.log(error);
-  }
-};
+        {
+          $project: {
+            _id: 0, // Remove the _id field
+            alias: "$_id", // Rename _id to alias
+            totalClicks: { $sum: "$totalClicks" }, // Sum total clicks across all URLs
+            uniqueUsers: { $size: { $setUnion: ["$uniqueClicks", []] } }, // Calculate the number of unique users
+            clicksByDate: {
+              $map: {
+                input: { $setUnion: ["$clicksByDate", []] }, // Get unique date-click pairs
+                as: "dateClick",
+                in: {
+                  date: "$$dateClick.date",
+                  clickCount: {
+                    $sum: "$$dateClick.clickCount", // Sum the click counts per date
+                  },
+                },
+              },
+            },
+            urls: "$shortUrls", // Include the short URLs array
+          },
+        },
+        {
+          $group: {
+            _id: null, // We now group everything together to get a single response
+            totalClicks: { $sum: "$totalClicks" },
+            uniqueUsers: { $sum: "$uniqueUsers" },
+            clicksByDate: { $push: { date: "$clicksByDate.date", clickCount: "$clicksByDate.clickCount" } },
+            urls: { $push: { shortUrl: "$urls.shortUrl", totalClicks: "$urls.totalClicks", uniqueUsers: "$uniqueUsers" } }
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            totalClicks: 1,
+            uniqueUsers: 1,
+            clicksByDate: {
+              $map: {
+                input: { $setUnion: ["$clicksByDate", []] }, // Ensure we are not duplicating dates
+                as: "dateClick",
+                in: {
+                  date: "$$dateClick.date",
+                  clickCount: {
+                    $sum: "$$dateClick.clickCount", // Sum the click counts per date
+                  },
+                },
+              },
+            },
+            urls: 1, // Project the final URLs array
+          },
+        },
+      ]);
+      return result;
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  

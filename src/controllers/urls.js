@@ -3,6 +3,7 @@ const {
   createUrl,
   getUrlAliasAnalytics,
   getOverallAnalytics,
+  getTopicAnalytics,
   createAnalytics,
 } = require("./../services/urls");
 const base62 = require("base62");
@@ -36,7 +37,9 @@ exports.shortenUrl = async (req, res, next) => {
       createdAt: newUrl.createdAt,
     });
   } catch (error) {
-    console.log(error);
+    res.status(500).json({
+        message:error?.message || "Something Went Wrong"
+    })
   }
 };
 
@@ -50,7 +53,7 @@ exports.getShortenUrlAlias = async (req, res) => {
       });
     }
 
-    const userAgent = req.get("User-Agent").toLowerCase();
+    const userAgent = req.get("User-Agent")?.toLowerCase();
     const { osType, deviceType } = getDeviceAndOSType(userAgent);
     const { ip } = req;
 
@@ -62,7 +65,9 @@ exports.getShortenUrlAlias = async (req, res) => {
     });
     return res.redirect(301, urlDetails.orig_url);
   } catch (error) {
-    console.log(error);
+    res.status(500).json({
+        message:error?.message || "Something Went Wrong"
+    })
   }
 };
 
@@ -82,41 +87,45 @@ function getDeviceAndOSType(userAgent) {
 
 exports.getUrlAnalytics = async (req, res, next) => {
   try {
+    console.log(/CALLED/,"ok");
     const { alias } = req.params;
     const result = await getUrlAliasAnalytics({ alias });
-
     res.status(200).json({
       ...result,
     });
   } catch (error) {
-    console.log(error);
+    res.status(500).json({
+        message:error?.message || "Something Went Wrong"
+    })
   }
 };
 
 exports.getTopicAnalytics = async (req, res, next) => {
   try {
     const { topic } = req.params;
-
-    console.log(topic);
-    const result = await getUrlAliasAnalytics({ topic });
-
+    const result = await getTopicAnalytics({ topic });
+    
+    console.log(result);
     res.status(200).json({
       ...result,
     });
   } catch (error) {
-    console.log(error);
+    res.status(500).json({
+        message:error?.message || "Something Went Wrong"
+    })
   }
 };
 
 exports.getoverallAnalytics = async (req, res, next) => {
   try {
-    console.log("Ov");
     const result = await getOverallAnalytics();
     res.status(200).json({
       ...result,
     });
   } catch (error) {
-    console.log(error);
+    res.status(500).json({
+        message:error?.message || "Something Went Wrong"
+    })
   }
 };
 
@@ -136,6 +145,8 @@ exports.RegisterUser = async (req, res, next) => {
       token, 
     });
   } catch (error) {
-    console.log(error);
+    res.status(500).json({
+        message:error?.message || "Something Went Wrong"
+    })
   }
 };
