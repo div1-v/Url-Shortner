@@ -53,25 +53,29 @@ exports.shortenUrl = async (req, res, next) => {
 exports.getShortenUrlAlias = async (req, res) => {
   try {
     const { alias } = req.params;
-    const isCached = await redis.get(alias);
-    console.log(isCached);
-    let urlDetails;
-    if(!isCached){
+    console.log(alias,/ok/);
+    let urlDetails = await redis.get(alias);
+    urlDetails = JSON.parse(urlDetails);
+    console.log(urlDetails,/SAVED/);
+    
+    if(!urlDetails){
       urlDetails = await findOneUrl({ alias });
+      console.log(/STORE IN REDIS/,urlDetails,alias);
+      if (!urlDetails) {
+        return res.status(404).json({
+          message: "Url not found",
+        });
+      }
+      await redis.set(alias, JSON.stringify({_id:urlDetails._id, orig_url:urlDetails.orig_url}));
+      console.log("d",/REDIS RESPONSE/);
     }
 
-    if (!urlDetails) {
-      return res.status(404).json({
-        message: "Url not found",
-      });
-    }
     
-    const red = await redis.set(alias,urlDetails.orig_url);
     const userAgent = req.get("User-Agent")?.toLowerCase();
     const { osType, deviceType } = getDeviceAndOSType(userAgent);
     const { ip } = req;
     
-    const v = await createAnalytics({
+    await createAnalytics({
       urlId: urlDetails._id,
       osType: osType || "unknown",
       deviceType: deviceType || "unknown",
@@ -79,6 +83,7 @@ exports.getShortenUrlAlias = async (req, res) => {
     });
     return res.redirect(301, urlDetails.orig_url);
   } catch (error) {
+    console.log(error);
     res.status(500).json({
         message:error?.message || "Something Went Wrong"
     })

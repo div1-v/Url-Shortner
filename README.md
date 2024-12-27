@@ -28,23 +28,42 @@ Table of Contents
     
 5.  Caching
     
-6.  Contributing
-    
-7.  License
-    
-
 Installation
 ------------
 
 Follow these steps to install and run the application locally:
 
-1.  git clone https://github.com/your-username/url-shortener-api.gitcd url-shortener-api
+1.  git clone https://github.com/your-username/url-shortener-api.gitcd url-shortener
+
+2. cd url-shortner
+
+3. Run npm install command on your terminal
+
+4. create a .env file to add environment variables used in application.
     
-2.  npm install
+  PORT=3000
+
+  MONGO_URI= mongodb_connection_string
+
+  GOOGLE_CLIENT_ID=your_google_client_id
+
+  GOOGLE_CLIENT_SECRET=your_google_client
+  
+  JWT_SECRET=jwt_secret
+
+  BASE_URL = server base url
+
+  REDIS_USERNAME=
+
+  REDIS_PASS=
+
+  REDIS_HOST=
+
+  REDIS_PORT=
+
+
     
-3.  PORT=3000MONGO\_URI=your\_mongodb\_connection\_stringGOOGLE\_CLIENT\_ID=your\_google\_client\_idGOOGLE\_CLIENT\_SECRET=your\_google\_client\_secretJWT\_SECRET=your\_jwt\_secret
-    
-4.  npm startThe server will start running at http://localhost:3000.
+5.  npm start The server will start running at http://localhost:3000.
     
 
 Usage
@@ -59,45 +78,42 @@ API Endpoints
 
 **Google Sign-In Authentication**:
 
-*   Implement Google Sign-In for user authentication.
-    
-*   Once authenticated, the server generates a JWT for the user.
+**Endpoint**: /api/auth/google/register **Method**: GET
+
+**Description**:  Redirect you to google login page. After successful login you
+                  will get an access token. Use this access token to access all other api endpoints.
     
 
 ### Create Short URL
 
-**Endpoint**: /api/shorten**Method**: POST
+**Endpoint**: /api/shorten **Method**: POST
 
 **Description**: Create a new short URL for easy sharing of long URLs.
 
 **Request Body**:
 
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   {    "longUrl": "https://example.com",    "customAlias": "example",  // optional    "topic": "marketing"       // optional  }   `
+{
+  "longUrl": "https://example.com",
+  "customAlias": "example",  // optional
+  "topic": "marketing"       // optional
+}
 
 **Response**:
 
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   {    "shortUrl": "http://short.ly/example",    "createdAt": "2024-12-27T12:00:00Z"  }   `
-
-**Rate Limiting**: Limits the number of short URLs a user can create within a specific timeframe.
+```json
+{
+  "shortUrl": "http://short.ly/example",
+  "createdAt": "2024-12-27T12:00:00Z"
+}
 
 ### Redirect Short URL
 
-**Endpoint**: /api/shorten/{alias}**Method**: GET
+**Endpoint**: /api/shorten/{alias} **Method**: GET
 
-**Description**: Redirect to the original URL based on the alias while tracking user engagement.
+**Description**: Redirect to the original URL based on the alia.
 
 **Response**: Redirects the user to the original URL.
 
-**Analytics Tracked**:
-
-*   Timestamp
-    
-*   User agent
-    
-*   IP address
-    
-*   Geolocation
-    
 
 ### Get URL Analytics
 
@@ -107,7 +123,23 @@ Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQL
 
 **Response**:
 
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   {    "totalClicks": 120,    "uniqueUsers": 80,    "clicksByDate": [      { "date": "2024-12-20", "clicks": 15 },      { "date": "2024-12-21", "clicks": 25 }    ],    "osType": [      { "osName": "Windows", "uniqueClicks": 60, "uniqueUsers": 40 },      { "osName": "Android", "uniqueClicks": 40, "uniqueUsers": 30 }    ],    "deviceType": [      { "deviceName": "mobile", "uniqueClicks": 70, "uniqueUsers": 50 },      { "deviceName": "desktop", "uniqueClicks": 50, "uniqueUsers": 30 }    ]  }   `
+```json
+{
+  "totalClicks": 120,
+  "uniqueUsers": 80,
+  "clicksByDate": [
+    { "date": "2024-12-20", "clicks": 15 },
+    { "date": "2024-12-21", "clicks": 25 }
+  ],
+  "osType": [
+    { "osName": "Windows", "uniqueClicks": 60, "uniqueUsers": 40 },
+    { "osName": "Android", "uniqueClicks": 40, "uniqueUsers": 30 }
+  ],
+  "deviceType": [
+    { "deviceName": "mobile", "uniqueClicks": 70, "uniqueUsers": 50 },
+    { "deviceName": "desktop", "uniqueClicks": 50, "uniqueUsers": 30 }
+  ]
+}
 
 ### Get Topic-Based Analytics
 
@@ -117,7 +149,27 @@ Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQL
 
 **Response**:
 
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   {    "totalClicks": 300,    "uniqueUsers": 200,    "clicksByDate": [      { "date": "2024-12-20", "clicks": 100 },      { "date": "2024-12-21", "clicks": 200 }    ],    "urls": [      {        "shortUrl": "http://short.ly/example1",        "totalClicks": 150,        "uniqueUsers": 100      },      {        "shortUrl": "http://short.ly/example2",        "totalClicks": 150,        "uniqueUsers": 100      }    ]  }   `
+```json
+{
+  "totalClicks": 300,
+  "uniqueUsers": 200,
+  "clicksByDate": [
+    { "date": "2024-12-20", "clicks": 100 },
+    { "date": "2024-12-21", "clicks": 200 }
+  ],
+  "urls": [
+    {
+      "shortUrl": "http://short.ly/example1",
+      "totalClicks": 150,
+      "uniqueUsers": 100
+    },
+    {
+      "shortUrl": "http://short.ly/example2",
+      "totalClicks": 150,
+      "uniqueUsers": 100
+    }
+  ]
+}
 
 ### Get Overall Analytics
 
@@ -127,19 +179,32 @@ Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQL
 
 **Response**:
 
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   {    "totalUrls": 10,    "totalClicks": 500,    "uniqueUsers": 300,    "clicksByDate": [      { "date": "2024-12-20", "clicks": 200 },      { "date": "2024-12-21", "clicks": 300 }    ],    "osType": [      { "osName": "Windows", "uniqueClicks": 200, "uniqueUsers": 120 },      { "osName": "Android", "uniqueClicks": 300, "uniqueUsers": 180 }    ],    "deviceType": [      { "deviceName": "mobile", "uniqueClicks": 400, "uniqueUsers": 250 },      { "deviceName": "desktop", "uniqueClicks": 100, "uniqueUsers": 50 }    ]  }   `
+```json
+{
+  "totalUrls": 10,
+  "totalClicks": 500,
+  "uniqueUsers": 300,
+  "clicksByDate": [
+    { "date": "2024-12-20", "clicks": 200 },
+    { "date": "2024-12-21", "clicks": 300 }
+  ],
+  "osType": [
+    { "osName": "Windows", "uniqueClicks": 200, "uniqueUsers": 120 },
+    { "osName": "Android", "uniqueClicks": 300, "uniqueUsers": 180 }
+  ],
+  "deviceType": [
+    { "deviceName": "mobile", "uniqueClicks": 400, "uniqueUsers": 250 },
+    { "deviceName": "desktop", "uniqueClicks": 100, "uniqueUsers": 50 }
+  ]
+}
+
 
 Rate Limiting
--------------
+------------
 
-*   Implement rate limiting using middleware to restrict the number of requests users can make.
-    
-*   Configure the limits based on the API usage requirements.
-    
+Rate Limiting is added to prevent api abuse
 
-Caching
--------
+Redis
+------------
 
-*   Implement caching for analytics endpoints to improve performance and reduce database load.
-    
-*   Use Redis for caching frequently requested analytics data.
+Redirect Api uses caching to store if a short url is previously fetched.

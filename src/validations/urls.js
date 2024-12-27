@@ -5,7 +5,7 @@ exports.shortenUrlValidation = joi.object({
         .uri()
         .required()
         .messages({
-            'string.base': '"longUrl" should be a type of \'string\'',
+            'string.base': '"longUrl" should be a type of string',
             'string.uri': '"longUrl" must be a valid URL',
             'any.required': '"longUrl" is required'
         }),
@@ -14,30 +14,12 @@ exports.shortenUrlValidation = joi.object({
         .allow('')
         .optional()
         .messages({
-            'string.base': '"customAlias" should be a type of \'string\''
+            'string.base': '"customAlias" should be a type of string'
         }),
 
     topic: joi.string()
         .optional()
         .messages({
-            'string.base': '"topic" should be a type of \'string\''
+            'string.base': '"topic" should be a type of string'
         })
-});
-
-exports.shortenUrlAliasValidation = joi.object({
-
-    alias: joi.string()
-        .optional()
-        .messages({
-            'string.base': '"customAlias" should be a type of \'string\''
-        }),
-});
-
-exports.shortenUrlTopicValidation = joi.object({
-
-    topic: joi.string()
-        .optional()
-        .messages({
-            'string.base': '"customAlias" should be a type of \'string\''
-        }),
 });
