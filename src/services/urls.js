@@ -27,7 +27,6 @@ exports.createAnalytics = async (input) => {
 
 exports.getUrlAliasAnalytics = async (alias) => {
   try {
-    console.log(alias);
     const result = await Url.aggregate([
       {
         $match: alias,
@@ -260,107 +259,93 @@ exports.getOverallAnalytics = async () => {
 };
 
 exports.getTopicAnalytics = async (topic) => {
-    try {
-      const result = await Analytics.aggregate([
-        {
-          $match: topic, // Match the specified topic
+  try {
+    const result = await Url.aggregate([
+      {
+        $match: topic, // Match the specified topic
+      },
+      {
+        $lookup: {
+          from: "analytics", // Join with the analytics collection
+          localField: "_id", // Match by URL ID
+          foreignField: "urlId", // Match by URL ID in the analytics collection
+          as: "analyticsData", // Store matched analytics records in 'analyticsData'
         },
-        {
-          $lookup: {
-            from: "analytics", // Join with the analytics collection
-            localField: "_id", // Match by URL ID
-            foreignField: "urlId", // Match by URL ID in the analytics collection
-            as: "analyticsData", // Store matched analytics records in 'analyticsData'
-          },
+      },
+      {
+        $unwind: {
+          path: "$analyticsData", // Flatten the analyticsData array
+          preserveNullAndEmptyArrays: true, // If no analytics data, keep the URL document
         },
-        {
-          $addFields: {
-            totalClicks: { $size: { $ifNull: ["$analyticsData", []] } }, // Calculate total clicks per URL
-          },
-        },
-        {
-          $unwind: {
-            path: "$analyticsData", // Flatten the analyticsData array
-            preserveNullAndEmptyArrays: true, // If no analytics data, keep the URL document
-          },
-        },
-        {
-          $group: {
-            _id: "$alias", // Group by alias (URL)
-            totalClicks: { $first: "$totalClicks" }, // Keep the first totalClicks (total clicks for URL)
-            uniqueClicks: {
-              $addToSet: "$analyticsData.ipAddress", // Collect unique IPs to calculate unique clicks
-            },
-            clicksByDate: {
-              $push: {
-                date: {
-                  $dateToString: {
-                    format: "%Y-%m-%d", // Format date as yyyy-mm-dd
-                    date: "$analyticsData.createdAt", // Use createdAt as the date for clicks
-                  },
-                },
-                clickCount: 1, // Each entry represents a click
+      },
+      {
+        $group: {
+          _id: "$topic", // Group by alias (URL)
+          totalClicks: {
+            $sum: {
+              $cond: {
+                if: { $gt: [{ $ifNull: ["$analyticsData", null] }, null] }, // Check if there's data in analyticsData
+                then: 1, // If there is data, count 1
+                else: 0, // If there is no data, count 0
               },
             },
-            shortUrls: { 
-              $push: { shortUrl: "$alias", totalClicks: "$totalClicks" } // Collect URLs and their total clicks
+          }, // Keep the first totalClicks (total clicks for URL)
+          uniqueClicks: {
+            $addToSet: "$analyticsData.ipAddress", // Collect unique IPs to calculate unique clicks
+          },
+          clicksByDate: {
+            $push: {
+              date: {
+                $dateToString: {
+                  format: "%Y-%m-%d", // Format date as yyyy-mm-dd
+                  date: "$analyticsData.createdAt", // Use createdAt as the date for clicks
+                },
+              },
+              clickCount: 1, // Each entry represents a click
             },
           },
-        },
-        {
-          $project: {
-            _id: 0, // Remove the _id field
-            alias: "$_id", // Rename _id to alias
-            totalClicks: { $sum: "$totalClicks" }, // Sum total clicks across all URLs
-            uniqueUsers: { $size: { $setUnion: ["$uniqueClicks", []] } }, // Calculate the number of unique users
-            clicksByDate: {
-              $map: {
-                input: { $setUnion: ["$clicksByDate", []] }, // Get unique date-click pairs
-                as: "dateClick",
-                in: {
-                  date: "$$dateClick.date",
-                  clickCount: {
-                    $sum: "$$dateClick.clickCount", // Sum the click counts per date
+          shortUrls: {
+            $addToSet: {
+              shortUrl: "$alias",
+              totalClicks: {
+                $sum: {
+                  $cond: {
+                    if: { $gt: [{ $ifNull: ["$analyticsData", null] }, null] }, // Check if there's data in analyticsData
+                    then: 1, // If there is data, count 1
+                    else: 0, // If there is no data, count 0
                   },
                 },
               },
-            },
-            urls: "$shortUrls", // Include the short URLs array
+              uniqueUsers: "$analyticsData.ipAddress",
+            }, // Collect URLs and their total clicks
           },
         },
-        {
-          $group: {
-            _id: null, // We now group everything together to get a single response
-            totalClicks: { $sum: "$totalClicks" },
-            uniqueUsers: { $sum: "$uniqueUsers" },
-            clicksByDate: { $push: { date: "$clicksByDate.date", clickCount: "$clicksByDate.clickCount" } },
-            urls: { $push: { shortUrl: "$urls.shortUrl", totalClicks: "$urls.totalClicks", uniqueUsers: "$uniqueUsers" } }
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            totalClicks: 1,
-            uniqueUsers: 1,
-            clicksByDate: {
-              $map: {
-                input: { $setUnion: ["$clicksByDate", []] }, // Ensure we are not duplicating dates
-                as: "dateClick",
-                in: {
-                  date: "$$dateClick.date",
-                  clickCount: {
-                    $sum: "$$dateClick.clickCount", // Sum the click counts per date
-                  },
+      },
+      {
+        $project: {
+          _id: 0, // Remove the _id field
+          alias: "$_id", // Rename _id to alias
+          totalClicks: { $sum: "$totalClicks" }, // Sum total clicks across all URLs
+          uniqueUsers: { $size: { $setUnion: ["$uniqueClicks", []] } }, // Calculate the number of unique users
+          clicksByDate: {
+            $map: {
+              input: { $setUnion: ["$clicksByDate", []] }, // Get unique date-click pairs
+              as: "dateClick",
+              in: {
+                date: "$$dateClick.date",
+                clickCount: {
+                  $sum: "$$dateClick.clickCount", // Sum the click counts per date
                 },
               },
             },
-            urls: 1, // Project the final URLs array
           },
+          urls: "$shortUrls",
         },
-      ]);
-      return result;
-    } catch (error) {
-      console.log(error);
-    }
-  };
-  
+      },
+    ]);
+    console.log(result);
+    return result[0];
+  } catch (error) {
+    console.log(error);
+  }
+};

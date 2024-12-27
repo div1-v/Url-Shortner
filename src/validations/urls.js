@@ -11,6 +11,7 @@ exports.shortenUrlValidation = joi.object({
         }),
 
     customAlias: joi.string()
+        .allow('')
         .optional()
         .messages({
             'string.base': '"customAlias" should be a type of \'string\''

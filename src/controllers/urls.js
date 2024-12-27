@@ -21,7 +21,14 @@ exports.shortenUrl = async (req, res, next) => {
         createdAt: urlDetails.createdAt,
       });
     }
-
+    if(customAlias){
+      const aliasExists = await findOneUrl({alias:customAlias});
+      if(aliasExists){
+        return res.status(200).json({
+            message:"Alias already exists, If you dont pass one, we will create a random alias for you!"
+        });
+      }
+    }
     const date = Date.now();
     const base62String = base62.encode(date.toString());
 
@@ -46,17 +53,24 @@ exports.shortenUrl = async (req, res, next) => {
 exports.getShortenUrlAlias = async (req, res) => {
   try {
     const { alias } = req.params;
-    const urlDetails = await findOneUrl({ alias });
+    const isCached = await redis.get(alias);
+    console.log(isCached);
+    let urlDetails;
+    if(!isCached){
+      urlDetails = await findOneUrl({ alias });
+    }
+
     if (!urlDetails) {
       return res.status(404).json({
         message: "Url not found",
       });
     }
-
+    
+    const red = await redis.set(alias,urlDetails.orig_url);
     const userAgent = req.get("User-Agent")?.toLowerCase();
     const { osType, deviceType } = getDeviceAndOSType(userAgent);
     const { ip } = req;
-
+    
     const v = await createAnalytics({
       urlId: urlDetails._id,
       osType: osType || "unknown",
@@ -87,7 +101,6 @@ function getDeviceAndOSType(userAgent) {
 
 exports.getUrlAnalytics = async (req, res, next) => {
   try {
-    console.log(/CALLED/,"ok");
     const { alias } = req.params;
     const result = await getUrlAliasAnalytics({ alias });
     res.status(200).json({
