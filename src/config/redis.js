@@ -1,22 +1,26 @@
-// config/redis.js
-const Redis = require('ioredis');
+const { createClient } = require("redis");
+let client;
+(async () => {
 
-// Create a Redis instance
-const redis = new Redis({
-  host: 'localhost',  // Redis host
-  port: 6379,         // Redis port
- // password: 'your-password', // Redis password if required
-  db: 0,              // Database number (default is 0)
-});
+  try {
+    
+      client = createClient({
+        username: process.env.REDIS_USERNAME,
+        password: process.env.REDIS_PASS,
+        socket: {
+          host: process.env.REDIS_HOST,
+          port: process.env.REDIS_PORT,
+        },
+      });
+    
+      await client.connect();
+      client.on("error", (err) => console.log("Redis Client Error", err));
+      client.on("connect", () => console.log("Redis Client Error"));
+      console.log("Redis Connected");
+      
+  } catch (error) {
+    console.log("Error Connection to Redis");
+  }
+})();
 
-// Error handling for Redis connection
-redis.on('error', (err) => {
-  console.error('Redis error:', err);
-});
-
-// Optionally, log a successful connection
-redis.on('connect', () => {
-  console.log('Connected to Redis');
-});
-
-module.exports = redis; // Export the redis instance
+module.exports = client;

@@ -17,7 +17,7 @@ exports.shortenUrl = async (req, res, next) => {
     const urlDetails = await findOneUrl({ orig_url: longUrl });
     if (urlDetails) {
       return res.status(200).json({
-        shortUrl: `http://localhost:4000/api/shorten/${urlDetails.alias}`,
+        shortUrl: `${process.env.BASE_URL}/api/shorten/${urlDetails.alias}`,
         createdAt: urlDetails.createdAt,
       });
     }
@@ -40,7 +40,7 @@ exports.shortenUrl = async (req, res, next) => {
     });
 
     return res.status(200).json({
-      shortUrl: `http://localhost:4000/api/shorten/${newUrl.alias}`,
+      shortUrl: `${process.env.BASE_URL}/api/shorten/${newUrl.alias}`,
       createdAt: newUrl.createdAt,
     });
   } catch (error) {
