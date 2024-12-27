@@ -63,6 +63,17 @@ To run this project, you will need to add the following environment variables to
 
 ## API Reference
 
+## Google Login/Register
+
+```http
+  Get /api/auth/google/register
+```
+
+```bash
+This api will redirect you to google login page. After successful login
+you will get access token which needs to be passed to other apis in headers.
+```
+
 ## Shorten Long Urls
 
 ```http
