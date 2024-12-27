@@ -16,6 +16,9 @@ const analyticsSchema = new mongoose.Schema(
     ipAddress: {
       type: String,
     },
+    geoLocation: {
+      type: Object,
+    },
   },
   { timestamps: true }
 );

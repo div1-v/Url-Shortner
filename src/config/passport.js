@@ -32,7 +32,7 @@ passport.use(
           name: existingUser.name,
           email: existingUser.email,
         };
-        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '5h' });
 
         return done(null, { user: existingUser, token });
       } catch (error) {

@@ -1,129 +1,117 @@
 URL Shortener & Analytics API
 =============================
 
-This Node.js application provides a service for shortening URLs, tracking clicks, and generating detailed analytics for each short URL. The application supports user authentication via Google Sign-In, provides analytics such as operating system usage, device type, and more, and implements rate limiting to prevent abuse. It also includes topic-based analytics to categorize URLs by topic.
+This Node.js application provides a service for shortening URLs, tracking clicks, and generating detailed analytics for each short URL. 
 
-Table of Contents
------------------
+## Features
 
-1.  Installation
-    
-2.  Usage
-    
-3.  API Endpoints
-    
-    *   User Authentication
-        
-    *   Create Short URL
-        
-    *   Redirect Short URL
-        
-    *   Get URL Analytics
-        
-    *   Get Topic-Based Analytics
-        
-    *   Get Overall Analytics
-        
-4.  Rate Limiting
-    
-5.  Caching
-    
-Installation
-------------
-
-Follow these steps to install and run the application locally:
-
-1.  git clone https://github.com/your-username/url-shortener-api.gitcd url-shortener
-
-2. cd url-shortner
-
-3. Run npm install command on your terminal
-
-4. create a .env file to add environment variables used in application.
-    
-  PORT=3000
-
-  MONGO_URI= mongodb_connection_string
-
-  GOOGLE_CLIENT_ID=your_google_client_id
-
-  GOOGLE_CLIENT_SECRET=your_google_client
-  
-  JWT_SECRET=jwt_secret
-
-  BASE_URL = server base url
-
-  REDIS_USERNAME=
-
-  REDIS_PASS=
-
-  REDIS_HOST=
-
-  REDIS_PORT=
+- Google OAuth login
+- Shorten any Long url
+- Access Short Url anywhere
+- Get Analytics of a Particular url
+- Get Analytics by topic
+- Get overall Analytics
+- Redis for caching url details
 
 
-    
-5.  npm start The server will start running at http://localhost:3000.
-    
+## Installation
 
-Usage
------
+Clone Github repository
 
-Use a tool like Postman or cURL to interact with the API endpoints described below.
+```bash
+  https://github.com/div1-v/Url-Shortner.git
+  cd Url-Shortner
+```
 
-API Endpoints
--------------
+Install dependencies
 
-### User Authentication
+```bash
+  npm i
+``` 
 
-**Google Sign-In Authentication**:
 
-**Endpoint**: /api/auth/google/register **Method**: GET
+## Environment Variables
 
-**Description**:  Redirect you to google login page. After successful login you
-                  will get an access token. Use this access token to access all other api endpoints.
-    
+To run this project, you will need to add the following environment variables to your .env file
 
-### Create Short URL
+`REDIS_USERNAME`
 
-**Endpoint**: /api/shorten **Method**: POST
+`REDIS_PASS`
 
-**Description**: Create a new short URL for easy sharing of long URLs.
+`REDIS_HOST`
 
-**Request Body**:
+`REDIS_PORT`
 
-{
-  "longUrl": "https://example.com",
-  "customAlias": "example",  // optional
-  "topic": "marketing"       // optional
-}
+`GOOGLE_CLIENT_ID`
 
-**Response**:
+`GOOGLE_CLIENT_SECRET`
 
-```json
+`JWT_SECRET`
+
+`MONGO_URI`
+
+`BASE_URL`
+
+`ANOTHER_API_KEY`
+
+### Start Server
+
+```bash
+  npm start
+``` 
+
+
+## API Reference
+
+## Shorten Long Urls
+
+```http
+  POST /api/shorten
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `longUrl` | `string` | **Required**. url to be shorted |
+| `customAlas` | `string` | **Optional**. alias for short url |
+| `topic` | `string` | **Optional**. topic for grouping urls |
+
+### Response
+```bash
 {
   "shortUrl": "http://short.ly/example",
   "createdAt": "2024-12-27T12:00:00Z"
 }
-
-### Redirect Short URL
-
-**Endpoint**: /api/shorten/{alias} **Method**: GET
-
-**Description**: Redirect to the original URL based on the alia.
-
-**Response**: Redirects the user to the original URL.
+``` 
 
 
-### Get URL Analytics
+## Redirect Url
 
-**Endpoint**: /api/analytics/{alias}**Method**: GET
+```http
+  GET /api/shorten/${alias}
+```
 
-**Description**: Retrieve detailed analytics for a specific short URL.
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
 
-**Response**:
+### Response
+```bash
+{
+  "shortUrl": "http://short.ly/example",
+  "createdAt": "2024-12-27T12:00:00Z"
+}
+``` 
 
-```json
+#### Analytics By Alias
+
+```http
+  POST /api/analytics/${alias}
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+
+### Response
+```bash
 {
   "totalClicks": 120,
   "uniqueUsers": 80,
@@ -140,16 +128,18 @@ API Endpoints
     { "deviceName": "desktop", "uniqueClicks": 50, "uniqueUsers": 30 }
   ]
 }
+``` 
 
-### Get Topic-Based Analytics
+#### Analytics By Topic
 
-**Endpoint**: /api/analytics/topic/{topic}**Method**: GET
+```http
+  POST /api/analytics/topic/${topic}
+```
 
-**Description**: Retrieve analytics for all short URLs grouped under a specific topic.
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
 
-**Response**:
-
-```json
+```bash
 {
   "totalClicks": 300,
   "uniqueUsers": 200,
@@ -170,16 +160,18 @@ API Endpoints
     }
   ]
 }
+```
 
-### Get Overall Analytics
+#### Overall Analytics 
 
-**Endpoint**: /api/analytics/overall**Method**: GET
+```http
+  POST /api/analytics/overall
+```
 
-**Description**: Retrieve overall analytics for all short URLs created by the authenticated user.
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
 
-**Response**:
-
-```json
+```bash
 {
   "totalUrls": 10,
   "totalClicks": 500,
@@ -197,14 +189,6 @@ API Endpoints
     { "deviceName": "desktop", "uniqueClicks": 100, "uniqueUsers": 50 }
   ]
 }
+```
 
 
-Rate Limiting
-------------
-
-Rate Limiting is added to prevent api abuse
-
-Redis
-------------
-
-Redirect Api uses caching to store if a short url is previously fetched.
