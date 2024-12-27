@@ -28,7 +28,7 @@ passport.use(
 
         // Generate a JWT token for the user
         const payload = {
-          id: existingUser._id,
+          _id: existingUser._id,
           name: existingUser.name,
           email: existingUser.email,
         };

@@ -1,5 +1,7 @@
 const Url = require("./../models/urls");
 const Analytics = require("./../models/analytics");
+const urls = require("./../models/urls");
+const mongoose = require("mongoose");
 
 exports.findOneUrl = async (input) => {
   try {
@@ -47,8 +49,7 @@ exports.getUrlAliasAnalytics = async (alias) => {
       },
       {
         $unwind: {
-          path: "$analyticsData",
-          preserveNullAndEmptyArrays: true,
+          path: "$analyticsData"
         },
       },
       {
@@ -156,21 +157,29 @@ exports.getUrlAliasAnalytics = async (alias) => {
   }
 };
 
-exports.getOverallAnalytics = async () => {
+exports.getOverallAnalytics = async (userId) => {
   try {
+    const allUrls = await Url.find({ createdBy: userId }).select("_id").lean();
+    const urlIds = allUrls.map((url) => url._id);
+
     const result = await Analytics.aggregate([
       {
+        $match: {
+          urlId: { $in: urlIds },
+        },
+      },
+      {
         $group: {
-          _id: "$alias", // Group by alias (URL)
+          _id: "$alias",
           totalClicks: { $sum: 1 }, // Count all clicks
           uniqueUsers: {
             $addToSet: "$ipAddress", // Collect unique IPs to calculate unique clicks
           },
           osType: {
-            $push: "$osType", // Collect all OS types for further analysis
+            $push: { osType: "$osType", ipAddress: "$ipAddress" },
           },
           deviceType: {
-            $push: "$deviceType", // Collect all device types for further analysis
+            $push: { deviceType: "$deviceType", ipAddress: "$ipAddress" },
           },
           clicksByDate: {
             $push: {
@@ -184,12 +193,13 @@ exports.getOverallAnalytics = async () => {
           },
         },
       },
-      // Step 5: Project final result to calculate unique clicks from distinct IPs
       {
         $project: {
           _id: 0,
           totalClicks: 1,
-          uniqueUsers: { $size: { $setUnion: ["$uniqueUsers", []] } }, // Get unique IPs
+          uniqueUsers: { $size: "$uniqueUsers" },
+          osType: 1,
+          deviceType: 1,
           clicksByDate: {
             $map: {
               input: { $setUnion: ["$clicksByDate", []] }, // Get unique dates
@@ -208,134 +218,168 @@ exports.getOverallAnalytics = async () => {
               },
             },
           },
-          osType: {
-            $map: {
-              input: { $setUnion: ["$osType", []] }, // Get unique OS types
-              as: "os",
-              in: {
-                osName: "$$os",
-                uniqueClicks: {
-                  $size: {
-                    $filter: {
-                      input: "$osType",
-                      as: "osType",
-                      cond: { $eq: ["$$osType", "$$os"] },
-                    },
-                  },
-                },
-                uniqueUsers: 1,
-              },
-            },
-          },
-          deviceType: {
-            $map: {
-              input: { $setUnion: ["$deviceType", []] }, // Get unique device types
-              as: "device",
-              in: {
-                deviceName: "$$device",
-                uniqueClicks: {
-                  $size: {
-                    $filter: {
-                      input: "$deviceType",
-                      as: "deviceType",
-                      cond: { $eq: ["$$deviceType", "$$device"] },
-                    },
-                  },
-                },
-                uniqueUsers: 1,
-              },
-            },
-          },
         },
       },
     ]);
 
-    const totalUrls = await Url.countDocuments();
-    result[0].totalUrls = totalUrls;
+    if (!result[0]) {
+      return {
+        totalClicks: 0,
+        uniqueUsers: 0,
+        clicksByDate: [],
+        osType: [],
+        deviceType: [],
+        totalUrls: 0,
+      };
+    }
+
+    const osDetails = getFormatedOsTypeDetails(result[0].osType)
+
+    const deviceDetails =getDeviceTypeDetails(result[0].deviceType);
+    
+    result[0].totalUrls = urlIds?.length;
+    result[0].osType = osDetails;
+    result[0].deviceType=deviceDetails;
     return result[0];
   } catch (error) {
     console.log(error);
   }
 };
 
+function getFormatedOsTypeDetails(osTypeArray){
+  const map = new Map();
+  for (const { osType, ipAddress } of osTypeArray) {
+    if (!map[osType]) {
+      map[osType] = {
+        osTypeName: osType,
+        osTypeNameCount: 0,
+        ipCount: new Set(),
+      };
+    }
+
+    map[osType].osTypeNameCount++;
+    map[osType].ipCount.add(ipAddress);
+  }
+  const res = [];
+
+  for (const key in map) {
+    res.push({
+      osName: map[key].osTypeName,
+      uniqueClicks: map[key].osTypeNameCount,
+      uniqueUsers: map[key].ipCount.size,
+    });
+  }
+  return res;
+}
+
+function getDeviceTypeDetails(deviceTypeArray){
+  const res = [];
+  const map = {};
+
+  for (const { deviceType, ipAddress } of deviceTypeArray) {
+    if (!map[deviceType]) {
+      map[deviceType] = {
+        deviceTypeName: deviceType,
+        deviceTypeNameCount: 0,
+        ipCount: new Set(),
+      };
+    }
+
+    map[deviceType].deviceTypeNameCount++;
+    map[deviceType].ipCount.add(ipAddress);
+  }
+  
+  for (const key in map) {
+    res.push({
+      deviceName: map[key].deviceTypeName,
+      uniqueClicks: map[key].deviceTypeNameCount,
+      uniqueUsers: map[key].ipCount.size,
+    });
+  }
+  return res;
+}
+
 exports.getTopicAnalytics = async (topic) => {
   try {
     const result = await Url.aggregate([
       {
-        $match: topic, // Match the specified topic
+        $match: topic,
       },
       {
         $lookup: {
-          from: "analytics", // Join with the analytics collection
-          localField: "_id", // Match by URL ID
-          foreignField: "urlId", // Match by URL ID in the analytics collection
-          as: "analyticsData", // Store matched analytics records in 'analyticsData'
+          from: "analytics",
+          localField: "_id",
+          foreignField: "urlId",
+          as: "analyticsData",
         },
       },
       {
         $unwind: {
-          path: "$analyticsData", // Flatten the analyticsData array
-          preserveNullAndEmptyArrays: true, // If no analytics data, keep the URL document
+          path: "$analyticsData"
         },
       },
       {
         $group: {
-          _id: "$topic", // Group by alias (URL)
+          _id: "$topic",
           totalClicks: {
             $sum: {
               $cond: {
-                if: { $gt: [{ $ifNull: ["$analyticsData", null] }, null] }, // Check if there's data in analyticsData
-                then: 1, // If there is data, count 1
-                else: 0, // If there is no data, count 0
+                if: { $gt: [{ $ifNull: ["$analyticsData", null] }, null] },
+                then: 1,
+                else: 0, 
               },
             },
-          }, // Keep the first totalClicks (total clicks for URL)
+          },
           uniqueClicks: {
-            $addToSet: "$analyticsData.ipAddress", // Collect unique IPs to calculate unique clicks
+            $addToSet: "$analyticsData.ipAddress",
           },
           clicksByDate: {
             $push: {
               date: {
                 $dateToString: {
-                  format: "%Y-%m-%d", // Format date as yyyy-mm-dd
-                  date: "$analyticsData.createdAt", // Use createdAt as the date for clicks
+                  format: "%Y-%m-%d", 
+                  date: "$analyticsData.createdAt", 
                 },
-              },
-              clickCount: 1, // Each entry represents a click
+              }
             },
           },
           shortUrls: {
-            $addToSet: {
+            $push: {
               shortUrl: "$alias",
               totalClicks: {
                 $sum: {
                   $cond: {
-                    if: { $gt: [{ $ifNull: ["$analyticsData", null] }, null] }, // Check if there's data in analyticsData
-                    then: 1, // If there is data, count 1
-                    else: 0, // If there is no data, count 0
+                    if: { $gt: [{ $ifNull: ["$analyticsData", null] }, null] }, 
+                    then: 1, 
+                    else: 0, 
                   },
                 },
               },
               uniqueUsers: "$analyticsData.ipAddress",
-            }, // Collect URLs and their total clicks
+            }, 
           },
         },
       },
       {
         $project: {
-          _id: 0, // Remove the _id field
-          alias: "$_id", // Rename _id to alias
-          totalClicks: { $sum: "$totalClicks" }, // Sum total clicks across all URLs
-          uniqueUsers: { $size: { $setUnion: ["$uniqueClicks", []] } }, // Calculate the number of unique users
+          _id: 0, 
+          totalClicks: { $sum: "$totalClicks" }, 
+          uniqueUsers: { $size: { $setUnion: ["$uniqueClicks", []] } }, 
           clicksByDate: {
             $map: {
-              input: { $setUnion: ["$clicksByDate", []] }, // Get unique date-click pairs
+              input: { $setUnion: ["$clicksByDate", []] }, 
               as: "dateClick",
               in: {
-                date: "$$dateClick.date",
                 clickCount: {
-                  $sum: "$$dateClick.clickCount", // Sum the click counts per date
+                  $size: {
+                    $filter: {
+                      input: "$clicksByDate",
+                      as: "click",
+                      cond: { $eq: ["$$click", "$$dateClick"] }, 
+                    },
+                  },
                 },
+                date: "$$dateClick.date", 
               },
             },
           },
@@ -343,9 +387,43 @@ exports.getTopicAnalytics = async (topic) => {
         },
       },
     ]);
-    console.log(result);
+
+    const formattedUrlAnalytics = getFormattedUrlDetails(result[0].urls);
+    result[0].urls = formattedUrlAnalytics;
     return result[0];
   } catch (error) {
     console.log(error);
   }
 };
+
+function getFormattedUrlDetails(urlArray) {
+  const map = new Map();
+
+  // Iterate through the array and accumulate data for each shortUrl
+  for (const { shortUrl, uniqueUsers, totalClicks } of urlArray) {
+    if (!map.has(shortUrl)) {
+      map.set(shortUrl, {
+        shortUrl: shortUrl,
+        totalClicks: 0,
+        uniqueUsers: new Set(),
+      });
+    }
+
+    // Accumulate the totalClicks and unique users
+    map.get(shortUrl).totalClicks += totalClicks;
+    map.get(shortUrl).uniqueUsers.add(uniqueUsers);
+  }
+
+  // Convert the map to an array with the desired structure
+  const result = [];
+
+  map.forEach((value) => {
+    result.push({
+      shortUrl: value.shortUrl,
+      totalClicks: value.totalClicks,
+      uniqueUsers: value.uniqueUsers.size, // Number of unique users (size of the set)
+    });
+  });
+
+  return result;
+}

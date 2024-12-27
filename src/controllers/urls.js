@@ -14,29 +14,21 @@ exports.shortenUrl = async (req, res, next) => {
   try {
     const { longUrl, customAlias, topic } = req.body;
 
-    const urlDetails = await findOneUrl({ orig_url: longUrl });
+    const urlDetails = await findOneUrl({ alias: customAlias });
     if (urlDetails) {
       return res.status(200).json({
-        shortUrl: `${process.env.BASE_URL}/api/shorten/${urlDetails.alias}`,
-        createdAt: urlDetails.createdAt,
+        message:
+          "Alias already exists, If you dont pass one, we will create a random alias for you!",
       });
-    }
-    if(customAlias){
-      const aliasExists = await findOneUrl({alias:customAlias});
-      if(aliasExists){
-        return res.status(200).json({
-            message:"Alias already exists, If you dont pass one, we will create a random alias for you!"
-        });
-      }
     }
     const date = Date.now();
     const base62String = base62.encode(date.toString());
 
-    console.log(base62String, `${date.toString()}${123232}`);
     const newUrl = await createUrl({
       orig_url: longUrl,
       alias: customAlias || base62String,
       topic,
+      createdBy: req?.user?._id,
     });
 
     return res.status(200).json({
@@ -45,48 +37,48 @@ exports.shortenUrl = async (req, res, next) => {
     });
   } catch (error) {
     res.status(500).json({
-        message:error?.message || "Something Went Wrong"
-    })
+      message: error?.message || "Something Went Wrong",
+    });
   }
 };
 
 exports.getShortenUrlAlias = async (req, res) => {
   try {
     const { alias } = req.params;
-    console.log(alias,/ok/);
     let urlDetails = await redis.get(alias);
     urlDetails = JSON.parse(urlDetails);
-    console.log(urlDetails,/SAVED/);
-    
-    if(!urlDetails){
+
+    if (!urlDetails) {
       urlDetails = await findOneUrl({ alias });
-      console.log(/STORE IN REDIS/,urlDetails,alias);
       if (!urlDetails) {
         return res.status(404).json({
           message: "Url not found",
         });
       }
-      await redis.set(alias, JSON.stringify({_id:urlDetails._id, orig_url:urlDetails.orig_url}));
-      console.log("d",/REDIS RESPONSE/);
+      console.log("Saving Url details in redis");
+      await redis.set(
+        alias,
+        JSON.stringify({ _id: urlDetails._id, orig_url: urlDetails.orig_url })
+      );
     }
 
-    
     const userAgent = req.get("User-Agent")?.toLowerCase();
     const { osType, deviceType } = getDeviceAndOSType(userAgent);
     const { ip } = req;
-    
-    await createAnalytics({
+
+    const v= await createAnalytics({
       urlId: urlDetails._id,
       osType: osType || "unknown",
       deviceType: deviceType || "unknown",
       ipAddress: ip,
     });
+    console.log(v);
     return res.redirect(301, urlDetails.orig_url);
   } catch (error) {
     console.log(error);
     res.status(500).json({
-        message:error?.message || "Something Went Wrong"
-    })
+      message: error?.message || "Something Went Wrong",
+    });
   }
 };
 
@@ -113,8 +105,8 @@ exports.getUrlAnalytics = async (req, res, next) => {
     });
   } catch (error) {
     res.status(500).json({
-        message:error?.message || "Something Went Wrong"
-    })
+      message: error?.message || "Something Went Wrong",
+    });
   }
 };
 
@@ -122,34 +114,31 @@ exports.getTopicAnalytics = async (req, res, next) => {
   try {
     const { topic } = req.params;
     const result = await getTopicAnalytics({ topic });
-    
-    console.log(result);
     res.status(200).json({
       ...result,
     });
   } catch (error) {
     res.status(500).json({
-        message:error?.message || "Something Went Wrong"
-    })
+      message: error?.message || "Something Went Wrong",
+    });
   }
 };
 
 exports.getoverallAnalytics = async (req, res, next) => {
   try {
-    const result = await getOverallAnalytics();
+    const result = await getOverallAnalytics(req?.user?._id);
     res.status(200).json({
       ...result,
     });
   } catch (error) {
     res.status(500).json({
-        message:error?.message || "Something Went Wrong"
-    })
+      message: error?.message || "Something Went Wrong",
+    });
   }
 };
 
 exports.RegisterUser = async (req, res, next) => {
   try {
-   
     const { user, token } = req.user;
 
     res.json({
@@ -160,11 +149,11 @@ exports.RegisterUser = async (req, res, next) => {
         email: user.email,
         profilePic: user.profilePic,
       },
-      token, 
+      token,
     });
   } catch (error) {
     res.status(500).json({
-        message:error?.message || "Something Went Wrong"
-    })
+      message: error?.message || "Something Went Wrong",
+    });
   }
 };
