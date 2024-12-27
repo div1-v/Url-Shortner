@@ -7,7 +7,7 @@ describe("URL Shortener API", () => {
     it("should shorten the URL and return the shortened URL", async () => {
       // Arrange
       const mockLongUrl = `https://cloud.redis.io/#/login`;
-      const mockAlias = "customAlias";
+      const mockAlias = "customAliassd";
       const mockTopic = "tech";
 
       const response = await request(app)
@@ -18,11 +18,11 @@ describe("URL Shortener API", () => {
           customAlias: mockAlias,
           topic: mockTopic,
         });
-
+      
       // Assert
       expect(response.status).toBe(200);
       expect(response.body.shortUrl).toBe(
-        `${BASE_URL}/api/shorten/${mockAlias}`
+        `${process.env.BASE_URL}/api/shorten/${mockAlias}`
       );
     });
   });

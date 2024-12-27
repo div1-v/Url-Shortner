@@ -388,6 +388,15 @@ exports.getTopicAnalytics = async (topic) => {
       },
     ]);
 
+    if (!result[0]) {
+      return {
+        totalClicks: 0,
+        uniqueUsers: 0,
+        clicksByDate: [],
+        urls: [],
+      };
+    }
+
     const formattedUrlAnalytics = getFormattedUrlDetails(result[0].urls);
     result[0].urls = formattedUrlAnalytics;
     return result[0];
