@@ -202,4 +202,14 @@ you will get access token which needs to be passed to other apis in headers.
 }
 ```
 
+## Swagger Docs
+
+```http
+  Get /docs
+```
+
+```bash
+To checkout swagger docs
+```
+
 
