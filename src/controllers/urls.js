@@ -103,10 +103,10 @@ exports.getUrlAnalytics = async (req, res, next) => {
     const { alias } = req.params;
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const result = await getUrlAliasAnalytics({
+    const result = await getUrlAliasAnalytics(
       alias,
-      createdAt: { $gt: sevenDaysAgo },
-    });
+      { $gt: sevenDaysAgo }
+    );
     res.status(200).json({
       ...result,
     });

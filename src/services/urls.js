@@ -27,50 +27,35 @@ exports.createAnalytics = async (input) => {
   }
 };
 
-exports.getUrlAliasAnalytics = async (alias) => {
+exports.getUrlAliasAnalytics = async (alias,createdLastSevenDay) => {
   try {
-    const result = await Url.aggregate([
+    const urlId = await Url.findOne({ alias: alias }).select("_id").lean();
+    const result = await Analytics.aggregate([
       {
-        $match: alias,
-      },
-      {
-        $lookup: {
-          from: "analytics",
-          localField: "_id",
-          foreignField: "urlId",
-          as: "analyticsData",
-        },
-      },
-
-      {
-        $addFields: {
-          totalClicks: { $size: { $ifNull: ["$analyticsData", []] } }, // Project only the analyticsData field
-        },
-      },
-      {
-        $unwind: {
-          path: "$analyticsData"
+        $match: {
+          urlId: urlId?._id,
+          createdAt:createdLastSevenDay
         },
       },
       {
         $group: {
           _id: "$alias",
-          totalClicks: { $first: "$totalClicks" },
+          totalClicks: { $sum: 1 },
           uniqueUsers: {
-            $addToSet: "$analyticsData.ipAddress",
+            $addToSet: "$ipAddress",
           },
           osType: {
-            $push: "$analyticsData.osType",
+            $push: "$osType",
           },
           deviceType: {
-            $push: "$analyticsData.deviceType",
+            $push: "$deviceType",
           },
           clicksByDate: {
             $push: {
               date: {
                 $dateToString: {
                   format: "%Y-%m-%d",
-                  date: "$analyticsData.createdAt",
+                  date: "$createdAt",
                 },
               },
             },
