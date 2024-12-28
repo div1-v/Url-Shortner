@@ -212,4 +212,10 @@ you will get access token which needs to be passed to other apis in headers.
 To checkout swagger docs
 ```
 
+## Deployment
+
+Add your docker hub username and access token in github secrets and variable.
+Github action will create a docker image on every push to this branch and push 
+image to your docker hub.
+you can use that image url to deploy.
 
