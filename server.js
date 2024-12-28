@@ -48,7 +48,7 @@ process.on("unhandledRejection", (reason, promise) => {
   );
 });
 
-app.listen(4000, () => {
+app.listen(process.env.PORT, () => {
   console.log("APP STARETD");
 });
 
