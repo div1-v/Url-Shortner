@@ -115,7 +115,7 @@ you will get access token which needs to be passed to other apis in headers.
 #### Analytics By Alias
 
 ```http
-  POST /api/analytics/${alias}
+  GET /api/analytics/${alias}
 ```
 
 | Parameter | Type     | Description                |
@@ -144,7 +144,7 @@ you will get access token which needs to be passed to other apis in headers.
 #### Analytics By Topic
 
 ```http
-  POST /api/analytics/topic/${topic}
+  GET /api/analytics/topic/${topic}
 ```
 
 | Parameter | Type     | Description                |
@@ -176,7 +176,7 @@ you will get access token which needs to be passed to other apis in headers.
 #### Overall Analytics 
 
 ```http
-  POST /api/analytics/overall
+  GET /api/analytics/overall
 ```
 
 | Parameter | Type     | Description                |
