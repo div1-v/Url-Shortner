@@ -11,6 +11,9 @@ const authRoutes = require("./src/routes/auth");
 
 const app = express();
 
+app.set('trust proxy', true);
+
+
 require("./src/config/passport");
 app.use(morgan("combined"));
 setupSwagger(app);
