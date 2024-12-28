@@ -19,7 +19,7 @@ This Node.js application provides a service for shortening URLs, tracking clicks
 Clone Github repository
 
 ```bash
-  https://github.com/div1-v/Url-Shortner.git
+  git clone https://github.com/div1-v/Url-Shortner.git
   cd Url-Shortner
 ```
 
