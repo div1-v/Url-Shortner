@@ -219,3 +219,11 @@ Github action will create a docker image on every push to this branch and push
 image to your docker hub.
 you can use that image url to deploy.
 
+## Test
+
+To run tests, go to test/tests.js file, There add a bearer token as a global variable to access apis.
+
+```bash
+  npm run test
+```
+
