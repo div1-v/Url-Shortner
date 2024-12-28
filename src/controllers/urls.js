@@ -28,7 +28,7 @@ exports.shortenUrl = async (req, res, next) => {
     const newUrl = await createUrl({
       orig_url: longUrl,
       alias: customAlias || base62String,
-      topic,
+      topic: topic || "common",
       createdBy: req?.user?._id,
     });
 
