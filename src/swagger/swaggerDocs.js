@@ -5,17 +5,49 @@ module.exports = {
     version: "1.0.0",
     description: "API for shortening URLs and analyzing link traffic.",
   },
+
   servers: [
     {
-      url: "http://localhost:4000/api", // Change this to your server URL
+      url: `${process.env.BASE_URL}/api`, // Change this to your server URL
     },
   ],
+  tags: [
+    {
+      name: "url-shortening",
+      description: "Operations related to URL shortening and traffic analysis",
+    },
+    {
+      name: "authentication",
+      description: "Operations related to user authentication (Google OAuth)",
+    },
+  ],
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT", // Optional: If using JWT tokens
+      },
+    },
+  },
+  security: [
+    {
+      bearerAuth: [], 
+    },
+  ],
+
   paths: {
     "/shorten": {
       post: {
+        tags: ["url-shortening"],
         summary: "Create a new short URL",
         description:
           "Create a new short URL to facilitate easy sharing of long URLs.",
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
         requestBody: {
           required: true,
           content: {
@@ -26,15 +58,18 @@ module.exports = {
                   longUrl: {
                     type: "string",
                     description: "The original long URL to be shortened.",
+                    default: "https://example.com/long-url",
                   },
                   customAlias: {
                     type: "string",
                     description: "A custom alias for the short URL (optional).",
+                    default: "my-custom-alias",
                   },
                   topic: {
                     type: "string",
                     description:
                       "A category to group the short URL (optional).",
+                    default: "general",
                   },
                 },
                 required: ["longUrl"],
@@ -75,6 +110,7 @@ module.exports = {
     },
     "/shorten/{alias}": {
       get: {
+        tags: ["url-shortening"],
         summary: "Redirect to the original long URL",
         description:
           "Redirect to the original URL based on the short URL alias.",
@@ -101,6 +137,12 @@ module.exports = {
     },
     "/analytics/{alias}": {
       get: {
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
+        tags: ["url-shortening"],
         summary: "Retrieve analytics for a specific short URL",
         description:
           "Get detailed analytics for a short URL, including clicks, unique users, and device/OS data.",
@@ -194,6 +236,12 @@ module.exports = {
     },
     "/analytics/overall": {
       get: {
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
+        tags: ["url-shortening"],
         summary: "Retrieve overall analytics for all URLs",
         description:
           "Retrieve overall analytics for all short URLs created by the authenticated user.",
@@ -272,6 +320,12 @@ module.exports = {
     },
     "/analytics/topic/{topic}": {
       get: {
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
+        tags: ["url-shortening"],
         summary: "Retrieve analytics for all URLs in a specific topic",
         description: "Get analytics for all short URLs under a specific topic.",
         parameters: [
@@ -334,6 +388,20 @@ module.exports = {
                 },
               },
             },
+          },
+        },
+      },
+    },
+    "/auth/google/register": {
+      get: {
+        tags: ["authentication"],
+        summary: "Register or Login using google",
+        description: "Create or login to account using google sign in. Try this url on another tab.",
+        
+        parameters: [],
+        responses: {
+          200: {
+            description: "Access token",
           },
         },
       },
