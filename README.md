@@ -212,6 +212,10 @@ you will get access token which needs to be passed to other apis in headers.
 To checkout swagger docs
 ```
 
+```bash
+Pass jwt token to authorize. If you want to try apis on swagger.
+```
+
 ## Deployment
 
 Add your docker hub username and access token in github secrets and variable.
