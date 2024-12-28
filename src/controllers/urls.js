@@ -9,7 +9,7 @@ const {
 const base62 = require("base62");
 const UAParser = require("ua-parser-js");
 const redis = require("./../config/redis");
-const geoip = require('geoip-lite');
+const geoip = require("geoip-lite");
 
 exports.shortenUrl = async (req, res, next) => {
   try {
@@ -66,15 +66,15 @@ exports.getShortenUrlAlias = async (req, res) => {
     const userAgent = req.get("User-Agent")?.toLowerCase();
     const { osType, deviceType } = getDeviceAndOSType(userAgent);
     const { ip } = req;
-    
+
     const geo = geoip.lookup(ip);
-  
-    const v= await createAnalytics({
+
+    const v = await createAnalytics({
       urlId: urlDetails._id,
       osType: osType || "unknown",
       deviceType: deviceType || "unknown",
       ipAddress: ip,
-      geoLocation:geo
+      geoLocation: geo,
     });
     return res.redirect(301, urlDetails.orig_url);
   } catch (error) {
@@ -101,7 +101,12 @@ function getDeviceAndOSType(userAgent) {
 exports.getUrlAnalytics = async (req, res, next) => {
   try {
     const { alias } = req.params;
-    const result = await getUrlAliasAnalytics({ alias });
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const result = await getUrlAliasAnalytics({
+      alias,
+      createdAt: { $gt: sevenDaysAgo },
+    });
     res.status(200).json({
       ...result,
     });
