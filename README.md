@@ -12,6 +12,7 @@ This Node.js application provides a service for shortening URLs, tracking clicks
 - Get Analytics by topic
 - Get overall Analytics
 - Redis for caching url details
+- API rate limit 
 
 
 ## Installation
