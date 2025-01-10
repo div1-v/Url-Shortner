@@ -27,28 +27,24 @@ exports.createAnalytics = async (input) => {
   }
 };
 
-exports.getUrlAliasAnalytics = async (alias,createdLastSevenDay) => {
+exports.getUrlAliasAnalytics = async (alias, createdLastSevenDay) => {
   try {
     const urlId = await Url.findOne({ alias: alias }).select("_id").lean();
     const result = await Analytics.aggregate([
       {
         $match: {
           urlId: urlId?._id,
-          createdAt:createdLastSevenDay
+          createdAt: createdLastSevenDay,
         },
       },
       {
         $group: {
           _id: "$alias",
           totalClicks: { $sum: 1 },
-          uniqueUsers: {
-            $addToSet: "$ipAddress",
-          },
-          osType: {
-            $push: "$osType",
-          },
-          deviceType: {
-            $push: "$deviceType",
+          uniqueUsers: { $addToSet: "$ipAddress" },
+          osTypeData: { $push: { os: "$osType", ip: "$ipAddress" } },
+          deviceTypeData: {
+            $push: { device: "$deviceType", ip: "$ipAddress" },
           },
           clicksByDate: {
             $push: {
@@ -66,10 +62,10 @@ exports.getUrlAliasAnalytics = async (alias,createdLastSevenDay) => {
         $project: {
           _id: 0,
           totalClicks: 1,
-          uniqueUsers: { $size: { $setUnion: ["$uniqueUsers", []] } }, // Get unique IPs
-          clicksByDate: {
+          uniqueUsers: { $size: "$uniqueUsers" }, // Total unique IPs
+          clicksByDate: {                                      
             $map: {
-              input: { $setUnion: ["$clicksByDate", []] }, // Get unique dates
+              input: { $setUnion: ["$clicksByDate", []] },
               as: "dateClick",
               in: {
                 clickCount: {
@@ -77,49 +73,81 @@ exports.getUrlAliasAnalytics = async (alias,createdLastSevenDay) => {
                     $filter: {
                       input: "$clicksByDate",
                       as: "click",
-                      cond: { $eq: ["$$click", "$$dateClick"] }, // Filter clicks by the date
+                      cond: { $eq: ["$$click", "$$dateClick"] },
                     },
                   },
                 },
-                date: "$$dateClick.date", // Use the date directly, no nesting
+                date: "$$dateClick.date",
               },
             },
           },
           osType: {
             $map: {
-              input: { $setUnion: ["$osType", []] }, // Get unique OS types
+              input: { $setUnion: ["$osTypeData.os", []] },
               as: "os",
               in: {
                 osName: "$$os",
                 uniqueClicks: {
                   $size: {
                     $filter: {
-                      input: "$osType",
-                      as: "osType",
-                      cond: { $eq: ["$$osType", "$$os"] },
+                      input: "$osTypeData",
+                      as: "osData",
+                      cond: { $eq: ["$$osData.os", "$$os"] },
                     },
                   },
                 },
-                uniqueUsers: 1,
+                uniqueUsers: {
+                  $size: {
+                    $setUnion: {
+                      $map: {
+                        input: {
+                          $filter: {
+                            input: "$osTypeData",
+                            as: "osData",
+                            cond: { $eq: ["$$osData.os", "$$os"] },
+                          },
+                        },
+                        as: "osData",
+                        in: "$$osData.ip",
+                      },
+                    },
+                  },
+                },
               },
             },
           },
           deviceType: {
             $map: {
-              input: { $setUnion: ["$deviceType", []] }, // Get unique device types
+              input: { $setUnion: ["$deviceTypeData.device", []] },
               as: "device",
               in: {
                 deviceName: "$$device",
                 uniqueClicks: {
                   $size: {
                     $filter: {
-                      input: "$deviceType",
-                      as: "deviceType",
-                      cond: { $eq: ["$$deviceType", "$$device"] },
+                      input: "$deviceTypeData",
+                      as: "deviceData",
+                      cond: { $eq: ["$$deviceData.device", "$$device"] },
                     },
                   },
                 },
-                uniqueUsers: 1,
+                uniqueUsers: {
+                  $size: {
+                    $setUnion: {
+                      $map: {
+                        input: {
+                          $filter: {
+                            input: "$deviceTypeData",
+                            as: "deviceData",
+                            cond: { $eq: ["$$deviceData.device", "$$device"] },
+                          },
+                        },
+                        as: "deviceData",
+                        in: "$$deviceData.ip",
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -218,20 +246,20 @@ exports.getOverallAnalytics = async (userId) => {
       };
     }
 
-    const osDetails = getFormatedOsTypeDetails(result[0].osType)
+    const osDetails = getFormatedOsTypeDetails(result[0].osType);
 
-    const deviceDetails =getDeviceTypeDetails(result[0].deviceType);
-    
+    const deviceDetails = getDeviceTypeDetails(result[0].deviceType);
+
     result[0].totalUrls = urlIds?.length;
     result[0].osType = osDetails;
-    result[0].deviceType=deviceDetails;
+    result[0].deviceType = deviceDetails;
     return result[0];
   } catch (error) {
     console.log(error);
   }
 };
 
-function getFormatedOsTypeDetails(osTypeArray){
+function getFormatedOsTypeDetails(osTypeArray) {
   const map = new Map();
   for (const { osType, ipAddress } of osTypeArray) {
     if (!map[osType]) {
@@ -257,7 +285,7 @@ function getFormatedOsTypeDetails(osTypeArray){
   return res;
 }
 
-function getDeviceTypeDetails(deviceTypeArray){
+function getDeviceTypeDetails(deviceTypeArray) {
   const res = [];
   const map = {};
 
@@ -273,7 +301,7 @@ function getDeviceTypeDetails(deviceTypeArray){
     map[deviceType].deviceTypeNameCount++;
     map[deviceType].ipCount.add(ipAddress);
   }
-  
+
   for (const key in map) {
     res.push({
       deviceName: map[key].deviceTypeName,
@@ -300,7 +328,7 @@ exports.getTopicAnalytics = async (topic) => {
       },
       {
         $unwind: {
-          path: "$analyticsData"
+          path: "$analyticsData",
         },
       },
       {
@@ -311,7 +339,7 @@ exports.getTopicAnalytics = async (topic) => {
               $cond: {
                 if: { $gt: [{ $ifNull: ["$analyticsData", null] }, null] },
                 then: 1,
-                else: 0, 
+                else: 0,
               },
             },
           },
@@ -322,10 +350,10 @@ exports.getTopicAnalytics = async (topic) => {
             $push: {
               date: {
                 $dateToString: {
-                  format: "%Y-%m-%d", 
-                  date: "$analyticsData.createdAt", 
+                  format: "%Y-%m-%d",
+                  date: "$analyticsData.createdAt",
                 },
-              }
+              },
             },
           },
           shortUrls: {
@@ -334,25 +362,25 @@ exports.getTopicAnalytics = async (topic) => {
               totalClicks: {
                 $sum: {
                   $cond: {
-                    if: { $gt: [{ $ifNull: ["$analyticsData", null] }, null] }, 
-                    then: 1, 
-                    else: 0, 
+                    if: { $gt: [{ $ifNull: ["$analyticsData", null] }, null] },
+                    then: 1,
+                    else: 0,
                   },
                 },
               },
               uniqueUsers: "$analyticsData.ipAddress",
-            }, 
+            },
           },
         },
       },
       {
         $project: {
-          _id: 0, 
-          totalClicks: { $sum: "$totalClicks" }, 
-          uniqueUsers: { $size: { $setUnion: ["$uniqueClicks", []] } }, 
+          _id: 0,
+          totalClicks: { $sum: "$totalClicks" },
+          uniqueUsers: { $size: { $setUnion: ["$uniqueClicks", []] } },
           clicksByDate: {
             $map: {
-              input: { $setUnion: ["$clicksByDate", []] }, 
+              input: { $setUnion: ["$clicksByDate", []] },
               as: "dateClick",
               in: {
                 clickCount: {
@@ -360,11 +388,11 @@ exports.getTopicAnalytics = async (topic) => {
                     $filter: {
                       input: "$clicksByDate",
                       as: "click",
-                      cond: { $eq: ["$$click", "$$dateClick"] }, 
+                      cond: { $eq: ["$$click", "$$dateClick"] },
                     },
                   },
                 },
-                date: "$$dateClick.date", 
+                date: "$$dateClick.date",
               },
             },
           },
